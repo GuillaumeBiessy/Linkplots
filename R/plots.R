@@ -282,7 +282,7 @@ ll_qqplot <- function(df, linetype = "dotted",
 ll_pyramid <- function(df, fill) {
 
   df |>
-    ggplot(aes(x = Age, weights = y, fill = fill)) +
+    ggplot(aes(x = x, weights = y, fill = fill)) +
     geom_bar(color = "black") +
     scale_fill_manual(values = c(lkp_comp_blue, lkp_magenta))
 }
