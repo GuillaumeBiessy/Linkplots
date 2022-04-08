@@ -1,5 +1,5 @@
 Package: Linkplots
-Title: What the Package Does (One Line, Title Case)
+Title: LinkPact Styled Plots
 Version: 0.0.0.9000
 Authors@R: 
     person(given = "Guillaume",
@@ -7,8 +7,8 @@ Authors@R:
            role = c("aut", "cre"),
            email = "guillaume.biessy78@gmail.com",
            comment = c(ORCID = "0000-0003-3756-7345"))
-Description: What the package does (one paragraph).
-License: MIT + file LICENSE
+Description: Common plots with LinkPact styling.
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
@@ -17,6 +17,16 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports: 
-    ggplot2
+    grDevices,
+    ggplot2,
+    lubridate,
+    ggridges,
+    tidyr,
+    purrr,
+    rlang,
+    dplyr,
+    scales
 URL: https://github.com/GuillaumeBiessy/Linkplots
 BugReports: https://github.com/GuillaumeBiessy/Linkplots/issues
+Depends: 
+    R (>= 2.10)

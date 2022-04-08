@@ -24,3 +24,4 @@ test_that("Theme works", {
   expect_silent(p1 + facet_grid(vs ~ am))
 })
 
+
