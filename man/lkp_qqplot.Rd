@@ -10,7 +10,6 @@ lkp_qqplot(
   f1,
   f2,
   group,
-  ...,
   label_text = lab_per,
   accuracy_text = NULL,
   color_text = "white",
@@ -24,8 +23,10 @@ lkp_qqplot(
   n_breaks_y = NULL,
   facet_type = "wrap",
   scales = "free",
+  labeller = label_verbose,
   nrow = NULL,
-  ncol = NULL
+  ncol = NULL,
+  ...
 )
 }
 \arguments{
@@ -38,8 +39,6 @@ lkp_qqplot(
 \item{f2}{Second optional variable for facet display}
 
 \item{group}{Grouping variable for qqplot}
-
-\item{...}{Additional parameters passed to the \code{"ll_qqplot"} function}
 
 \item{label_text}{Labeller for the printed numbers. Optional}
 
@@ -70,9 +69,22 @@ facetting ?}
 free (\code{"free"}), or free in one dimension (\code{"free_x"},
 \code{"free_y"})?}
 
+\item{labeller}{A function that takes one data frame of labels and
+returns a list or data frame of character vectors. Each input
+column corresponds to one factor. Thus there will be more than
+one with \code{vars(cyl, am)}. Each output
+column gets displayed as one separate line in the strip
+label. This function should inherit from the "labeller" S3 class
+for compatibility with \code{\link[ggplot2:labeller]{labeller()}}. You can use different labeling
+functions for different kind of labels, for example use \code{\link[ggplot2:labellers]{label_parsed()}} for
+formatting facet labels. \code{\link[ggplot2:labellers]{label_value()}} is used by default,
+check it for more details and pointers to other options.}
+
 \item{nrow}{Number of rows and columns.}
 
 \item{ncol}{Number of rows and columns.}
+
+\item{...}{Additional parameters passed to the \code{"ll_qqplot"} function}
 }
 \value{
 A ggplot object representing a density plot with one or several

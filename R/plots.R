@@ -8,7 +8,7 @@ lkp_light_blue  <- grDevices::rgb(35, 95, 221, maxColorValue = 255)  # Bleu Link
 lkp_light_green <- grDevices::rgb(0, 227, 166, maxColorValue = 255) # Vert LinkPact
 
 lkp_colors <- c(lkp_comp_blue, lkp_magenta, lkp_green,
-  lkp_light_blue, lkp_light_green)
+                lkp_light_blue, lkp_light_green)
 
 # Mise en forme des chiffres et pourcentages----
 
@@ -38,24 +38,6 @@ lab_an <- function(...) {
 
 # Tools----
 
-#' Add with rollback
-#'
-#' Custom version of the \code{add_with_rollback} function from the lubridate
-#' package.
-#'
-#' @param d A vector of dates.
-#' @param t A vector of duration objects.
-#'
-#' @return The vector of dates obtained by adding t to d. Length of d and t must
-#'   be either the same size or size 1.
-#'
-#' @examples
-#' library(lubridate)
-#' dmy("29/01/2001") %awr% days(1) %awr% months(1)
-#' dmy("29/01/2001") %awr% months(1) %awr% days(1)
-#' dmy("29/02/2000") %awr% years(1)
-#'
-#' @export
 `%awr%` <- function(d, t) {
 
   any_day <- any(t@day != 0)
@@ -126,22 +108,15 @@ yeardif <- function(d1, d2) {
   return(out)
 }
 
-bissextile <- function(y) {y %% 4 == 0 & (y & 100 != 0 | y %% 400 == 0)}
+# Custom display----
 
-sd.weighted.mean <- function(x, w) {
-
-  sqrt(stats::var(x) / length(x) * mean(w ^ 2) / (mean(w) ^ 2))
-}
-
-# Custom Labels display----
-
-#' Labels for numbers
+#' Verbos Labels
 #'
 #' @param labels A series of labels to be modified
 #'
 #' @export
 #'
-label_custom <- function(labels) {
+label_verbose <- function(labels) {
 
   labels |>
     as.list() |>
@@ -150,20 +125,22 @@ label_custom <- function(labels) {
     list()
 }
 
-add_facets <- function(p, v_row, v_col, facet_type, scales, nrow, ncol) {
+add_facets <- function(p, v_row, v_col, facet_type,
+                       scales, labeller, nrow, ncol) {
 
   if (is.null(v_row) && is.null(v_col)) return(p)
 
   p + switch(facet_type,
              wrap = facet_wrap(facets = c(v_row, v_col), nrow, ncol,
-                               scales = scales, labeller = label_custom),
+                               scales = scales,
+                               labeller = labeller),
              grid = {
                rows <- if (!is.null(v_row)) sym(v_row)
                cols <- if (!is.null(v_col)) sym(v_col)
                facet_grid(rows = vars(!!rows),
                           cols = vars(!!cols),
                           scales = scales,
-                          labeller = label_custom)})
+                          labeller = label_verbose)})
 }
 
 # Low level plots----
@@ -173,10 +150,11 @@ ll_bar <- function(df, fill = NULL, default_color = lkp_green) {
 
   if (is.null(fill)) {
     ggplot(data = df, aes(x = x, y = y)) +
-      geom_bar(fill = default_color, stat = "identity", position = "stack")
+      geom_bar(fill = default_color, stat = "identity",
+               position = "stack", color = "black", size = 0.05)
   } else {
     ggplot(data = df, aes(x = x, y = y, fill = .data[[fill]])) +
-      geom_bar(stat = "identity", position = "stack")
+      geom_bar(stat = "identity", position = "stack", color = "black", size = 0.05)
   }
 }
 
@@ -221,9 +199,9 @@ ll_density <- function(df, fill = NULL, from = NULL, alpha = 0.8,
 
 # Line and dot plot with optional labels
 ll_lines <- function(df, fill = NULL, IC, ydots = "y", ymin = "ymin", ymax = "ymax",
-                    alpha = 0.2, linesize = 0.6, linetype = "dotted",
-                    pointsize = 2, shape = 21,
-                    default_color = lkp_green) {
+                     alpha = 0.2, linesize = 0.6, linetype = "dotted",
+                     pointsize = 2, shape = 21,
+                     default_color = lkp_green) {
 
   if (missing(IC)) IC <- "ymin" %in% colnames(df) && "ymax" %in% colnames(df)
 
@@ -251,7 +229,7 @@ ll_lines <- function(df, fill = NULL, IC, ydots = "y", ymin = "ymin", ymax = "ym
 }
 
 # Line and dot plot with optional labels
-ll_errorbar <- function(df, fill = NULL,
+ll_linerange <- function(df, fill = NULL,
                         errorsize = 1, linesize = 0.6, linetype = "dotted",
                         pointsize = 3, shape = 21, default_color = lkp_green) {
 
@@ -281,8 +259,7 @@ ll_qqplot <- function(df, linetype = "dotted",
 
 ll_pyramid <- function(df, fill) {
 
-  df |>
-    ggplot(aes(x = x, weights = y, fill = fill)) +
+  ggplot(df, aes(x = x, weights = y, fill = fill)) +
     geom_bar(color = "black") +
     scale_fill_manual(values = c(lkp_comp_blue, lkp_magenta))
 }
@@ -338,7 +315,10 @@ lkp_hist <- function(df, x, f1, f2, fill,
                      accuracy_x = NULL, accuracy_y = NULL,
                      n_breaks_x = NULL, n_breaks_y = NULL,
                      facet_type = "wrap", scales = "fixed",
+                     labeller = label_verbose,
                      nrow = NULL, ncol = NULL, ...) {
+
+  x_vec <- eval(substitute(x), df)
 
   # Mise en forme des données
   df <- if (!is.null(bw)) {
@@ -366,18 +346,19 @@ lkp_hist <- function(df, x, f1, f2, fill,
                          family = "serif")
     } else {
       p <- p + geom_text(aes(label = label_text(accuracy_text)(y)),
-                    position = position_stack(vjust = 0.5),
-                    family = "serif")
+                         position = position_stack(vjust = 0.5),
+                         family = "serif")
     }
   }
 
   # Personnalisation des axes
-  if (is.numeric(df$x)) {
+  if (is.numeric(x_vec)) {
 
-    if (missing(label_x)) label_x <- if (all(between(df$x, 1800, 2200))) lab_an else lab_numb
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
 
     p <- p + scale_x_continuous(
-      labels = label_x(accuracy_x), n.breaks = n_breaks_x)
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = expansion(mult = 0.03))
   }
 
   if (missing(label_y)) label_y <- if (what == "number") lab_numb else lab_per
@@ -387,13 +368,15 @@ lkp_hist <- function(df, x, f1, f2, fill,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
+  x_lab <- deparse(substitute(x))
+
   p <- p + labs(
     x = x_lab,
     y = switch(
@@ -419,15 +402,16 @@ lkp_hist <- function(df, x, f1, f2, fill,
 #' @return A ggplot object representing an histogram with one or several facets
 #'
 #' @export
-lkp_hist_date <- function(df, x, f1, f2, fill, ...,
-                      wt = NULL, bw = "y", what = "number",
-                      show_numbers, label_text, accuracy_text = NULL,
-                      position_text, vjust_text = - 0.25, hjust_text = 0.5,
-                      label_x, label_y,
-                      accuracy_x = NULL, accuracy_y = NULL,
-                      n_breaks_x = NULL, n_breaks_y = NULL,
-                      facet_type = "wrap", scales = "fixed",
-                      nrow = NULL, ncol = NULL) {
+lkp_hist_date <- function(df, x, f1, f2, fill,
+                          wt = NULL, bw = "y", what = "number",
+                          show_numbers, label_text, accuracy_text = NULL,
+                          position_text, vjust_text = - 0.25, hjust_text = 0.5,
+                          label_x, label_y,
+                          accuracy_x = NULL, accuracy_y = NULL,
+                          n_breaks_x = NULL, n_breaks_y = NULL,
+                          facet_type = "wrap", scales = "fixed",
+                          labeller = label_verbose,
+                          nrow = NULL, ncol = NULL, ...) {
 
   # Mise en forme des données
   df <- df |>
@@ -440,7 +424,7 @@ lkp_hist_date <- function(df, x, f1, f2, fill, ...,
   if (bw == "y") df <- df |> count(y, wt = n)
   df <- df |> mutate(x = paste(
     if (bw == "d") d else 1, if (bw != "y") m else 1, y, sep = "/") |> lubridate::dmy()) |>
-    rename(y = n)
+    mutate(y = n)
   if (what == "freq") df <- df |> mutate(y = y / sum(y))
   if (what == "subfreq") df <- df |> group_by({{f1}}, {{f2}}) |> mutate(y = y / sum(y))
 
@@ -473,13 +457,15 @@ lkp_hist_date <- function(df, x, f1, f2, fill, ...,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
+  x_lab <- deparse(substitute(x))
+
   p <- p + labs(
     x = "Date",
     y = switch(
@@ -504,15 +490,16 @@ lkp_hist_date <- function(df, x, f1, f2, fill, ...,
 #'   is rounded down to be a multiple of \code{"bw"}.
 #'
 #' @export
-lkp_hist_duration <- function(df, x1, x2, f1, f2, fill, ...,
-                          wt = NULL, bw = "y", what = "number",
-                          show_numbers, label_text, accuracy_text = NULL,
-                          position_text, vjust_text = - 0.25, hjust_text = 0.5,
-                          label_x, label_y,
-                          accuracy_x = NULL, accuracy_y = NULL,
-                          n_breaks_x = NULL, n_breaks_y = NULL,
-                          facet_type = "wrap", scales = "fixed",
-                          nrow = NULL, ncol = NULL) {
+lkp_hist_duration <- function(df, x1, x2, f1, f2, fill,
+                              wt = NULL, bw = "y", what = "number",
+                              show_numbers, label_text, accuracy_text = NULL,
+                              position_text, vjust_text = - 0.25, hjust_text = 0.5,
+                              label_x, label_y,
+                              accuracy_x = NULL, accuracy_y = NULL,
+                              n_breaks_x = NULL, n_breaks_y = NULL,
+                              facet_type = "wrap", scales = "fixed",
+                              labeller = label_verbose,
+                              nrow = NULL, ncol = NULL, ...) {
 
   # Mise en forme des données
   df <- df |>
@@ -552,14 +539,16 @@ lkp_hist_duration <- function(df, x1, x2, f1, f2, fill, ...,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x1_lab <- paste(ensym(x1))
-  x2_lab <- paste(ensym(x2))
+  x1_lab <- deparse(substitute(x1))
+  x2_lab <- deparse(substitute(x2))
+
   p <- p + labs(
     x = "Durée passée",
     y = switch(
@@ -579,24 +568,27 @@ lkp_hist_duration <- function(df, x1, x2, f1, f2, fill, ...,
 #' Ridge Line Plot
 #'
 #' @inheritParams lkp_hist
-#' @param y The y axis variable for the histogram
+#' @param y The y axis variable
 #' @param ... Additional parameters to be passed to \code{ll_ridgeline}.
 #'
 #' @return A ggplot object representing a ridgeline plot with one or several
 #'   facets
 #'
 #' @export
-lkp_ridgeline <- function(df, x, y, f1, f2, ...,
+lkp_ridgeline <- function(df, x, y, f1, f2,
                           show_numbers, label_text, accuracy_text = NULL,
                           vjust_text = - 0.5, hjust_text = 0.5,
                           label_x, label_y,
                           accuracy_x = NULL, accuracy_y = NULL,
                           n_breaks_x = NULL, n_breaks_y = NULL,
                           facet_type = "wrap", scales = "fixed",
-                          nrow = NULL, ncol = NULL) {
+                          labeller = label_verbose,
+                          nrow = NULL, ncol = NULL, ...) {
+
+  x_vec <- eval(substitute(x), df)
 
   # Mise en forme des données
-  df <- df |> rename(x = {{x}}, y = {{y}})
+  df <- df |> mutate(x = {{x}}, y = {{y}})
 
   # Production du graphique élémentaire
   p <- ll_ridgeline(df, ...)
@@ -611,12 +603,13 @@ lkp_ridgeline <- function(df, x, y, f1, f2, ...,
               family = "serif")
 
   # Personnalisation des axes
-  if (is.numeric(df$x)) {
+  if (is.numeric(x_vec)) {
 
-    if (missing(label_x)) label_x <- if (all(between(df$x, 1800, 2200))) lab_an else lab_numb
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
 
     p <- p + scale_x_continuous(
-      labels = label_x(accuracy_x), n.breaks = n_breaks_x)
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = expansion(mult = 0.03))
   }
 
   if (missing(label_y)) label_y <- lab_numb
@@ -626,14 +619,16 @@ lkp_ridgeline <- function(df, x, y, f1, f2, ...,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
-  y_lab <- paste(ensym(y))
+  x_lab <- deparse(substitute(x))
+  y_lab <- deparse(substitute(y))
+
   p <- p + labs(
     x = x_lab,
     y = y_lab,
@@ -654,17 +649,20 @@ lkp_ridgeline <- function(df, x, y, f1, f2, ...,
 #'   facets
 #'
 #' @export
-lkp_lines <- function(df, x, y, f1, f2, fill, ...,
-                     show_numbers, label_text, accuracy_text = NULL,
-                     vjust_text = - 0.5, hjust_text = 0.5,
-                     label_x, label_y,
-                     accuracy_x = NULL, accuracy_y = NULL,
-                     n_breaks_x = NULL, n_breaks_y = NULL,
-                     facet_type = "wrap", scales = "fixed",
-                     nrow = NULL, ncol = NULL) {
+lkp_lines <- function(df, x, y, f1, f2, fill,
+                      show_numbers, label_text, accuracy_text = NULL,
+                      vjust_text = - 0.5, hjust_text = 0.5,
+                      label_x, label_y,
+                      accuracy_x = NULL, accuracy_y = NULL,
+                      n_breaks_x = NULL, n_breaks_y = NULL,
+                      facet_type = "wrap", scales = "fixed",
+                      labeller = label_verbose,
+                      nrow = NULL, ncol = NULL, ...) {
+
+  x_vec <- eval(substitute(x), df)
 
   # Mise en forme des données
-  df <- df |> rename(x = {{x}}, y = {{y}})
+  df <- df |> mutate(x = {{x}}, y = {{y}})
 
   # Production du graphique élémentaire
   fill <- if (!missing(fill)) paste(ensym(fill))
@@ -680,12 +678,13 @@ lkp_lines <- function(df, x, y, f1, f2, fill, ...,
               family = "serif")
 
   # Personnalisation des axes
-  if (is.numeric(df$x)) {
+  if (is.numeric(x_vec)) {
 
-    if (missing(label_x)) label_x <- if (all(between(df$x, 1800, 2200))) lab_an else lab_numb
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
 
     p <- p + scale_x_continuous(
-      labels = label_x(accuracy_x), n.breaks = n_breaks_x)
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = expansion(mult = 0.03))
   }
 
   if (missing(label_y)) label_y <- lab_numb
@@ -695,14 +694,16 @@ lkp_lines <- function(df, x, y, f1, f2, fill, ...,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
-  y_lab <- paste(ensym(y))
+  x_lab <- deparse(substitute(x))
+  y_lab <- deparse(substitute(y))
+
   p <- p + labs(
     x = x_lab,
     y = y_lab,
@@ -726,17 +727,20 @@ lkp_lines <- function(df, x, y, f1, f2, fill, ...,
 #'   facets
 #'
 #' @export
-lkp_meanplot <- function(df, x, y, f1, f2, fill, ..., wt,
-                     show_numbers, label_text, accuracy_text = NULL,
-                     vjust_text = - 0.5, hjust_text = 0.5,
-                     label_x, label_y,
-                     accuracy_x = NULL, accuracy_y = NULL,
-                     n_breaks_x = NULL, n_breaks_y = NULL,
-                     facet_type = "wrap", scales = "fixed",
-                     nrow = NULL, ncol = NULL) {
+lkp_meanplot <- function(df, x, y, f1, f2, fill, wt,
+                         show_numbers, label_text, accuracy_text = NULL,
+                         vjust_text = - 0.5, hjust_text = 0.5,
+                         label_x, label_y,
+                         accuracy_x = NULL, accuracy_y = NULL,
+                         n_breaks_x = NULL, n_breaks_y = NULL,
+                         facet_type = "wrap", scales = "fixed",
+                         labeller = label_verbose,
+                         nrow = NULL, ncol = NULL, ...) {
+
+  x_vec <- eval(substitute(x), df)
 
   # Mise en forme des données
-  df <- df |> rename(x = {{x}}, y = {{y}})
+  df <- df |> mutate(x = {{x}}, y = {{y}})
   if (missing(wt)) {
     df <- df |>
       group_by(x, {{f1}}, {{f2}}, {{fill}}) |>
@@ -770,12 +774,13 @@ lkp_meanplot <- function(df, x, y, f1, f2, fill, ..., wt,
               family = "serif")
 
   # Personnalisation des axes
-  if (is.numeric(df$x)) {
+  if (is.numeric(x_vec)) {
 
-    if (missing(label_x)) label_x <- if (all(between(df$x, 1800, 2200))) lab_an else lab_numb
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
 
     p <- p + scale_x_continuous(
-      labels = label_x(accuracy_x), n.breaks = n_breaks_x)
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = expansion(mult = 0.03))
   }
 
   if (missing(label_y)) label_y <- lab_numb
@@ -785,14 +790,90 @@ lkp_meanplot <- function(df, x, y, f1, f2, fill, ..., wt,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
-  y_lab <- paste(ensym(y))
+  x_lab <- deparse(substitute(x))
+  y_lab <- deparse(substitute(y))
+
+  p <- p + labs(
+    x = x_lab,
+    y = y_lab,
+    title = paste(
+      "Représentation de", y_lab, "en fonction de", x_lab)
+  )
+
+  return(p)
+}
+
+#' Linerange Plot
+#'
+#' @inheritParams lkp_lines
+#' @param ... Additional parameters to be passed to \code{ll_dots_and_lines}.
+#'
+#' @return A ggplot object representing a line and dots plot with one or several
+#'   facets
+#'
+#' @export
+lkp_linerange <- function(df, x, y, f1, f2, fill,
+                          show_numbers, label_text, accuracy_text = NULL,
+                          vjust_text = - 0.5, hjust_text = 0.5,
+                          label_x, label_y,
+                          accuracy_x = NULL, accuracy_y = NULL,
+                          n_breaks_x = NULL, n_breaks_y = NULL,
+                          facet_type = "wrap", scales = "fixed",
+                          labeller = label_verbose,
+                          nrow = NULL, ncol = NULL, ...) {
+
+  x_vec <- eval(substitute(x), df)
+
+  # Mise en forme des données
+  df <- df |> mutate(x = {{x}}, y = {{y}})
+
+  # Production du graphique élémentaire
+  fill <- if (!missing(fill)) paste(ensym(fill))
+  p <- ll_linerange(df, fill, ...)
+
+  # Texte pour indiquer les valeurs
+  if (missing(show_numbers))
+    show_numbers <- (nrow(df) <= max(20, 8 * nrow(df |> count({{f1}}, {{f2}}, {{fill}}))))
+  if (missing(label_text)) label_text <- lab_numb
+  if (show_numbers) p <- p +
+    geom_text(aes(label = label_text(accuracy_text)(y)),
+              vjust = vjust_text, hjust = hjust_text,
+              family = "serif")
+
+  # Personnalisation des axes
+  if (is.numeric(x_vec)) {
+
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
+
+    p <- p + scale_x_continuous(
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = expansion(mult = 0.03))
+  }
+
+  if (missing(label_y)) label_y <- lab_numb
+
+  p <- p + scale_y_continuous(
+    labels = label_y(accuracy_y), n.breaks = n_breaks_y)
+
+  # Ajout des facettes
+  p <- add_facets(p,
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
+                  facet_type = facet_type, scales = scales,
+                  labeller = labeller,
+                  nrow = nrow, ncol = ncol)
+
+  # Ajout des titres
+  x_lab <- deparse(substitute(x))
+  y_lab <- deparse(substitute(y))
+
   p <- p + labs(
     x = x_lab,
     y = y_lab,
@@ -814,27 +895,31 @@ lkp_meanplot <- function(df, x, y, f1, f2, fill, ..., wt,
 #'   facets.
 #'
 #' @export
-lkp_density <- function(df, x, f1, f2, fill, ...,
+lkp_density <- function(df, x, f1, f2, fill,
                         label_x, label_y,
                         accuracy_x = NULL, accuracy_y = NULL,
                         n_breaks_x = NULL, n_breaks_y = NULL,
                         facet_type = "wrap", scales = "fixed",
-                        nrow = NULL, ncol = NULL) {
+                        labeller = label_verbose,
+                        nrow = NULL, ncol = NULL, ...) {
+
+  x_vec <- eval(substitute(x), df)
 
   # Mise en forme des données
-  df <- df |> rename(x = {{x}})
+  df <- df |> mutate(x = {{x}})
 
   # Production du graphique élémentaire
   fill <- if (!missing(fill)) paste(ensym(fill))
   p <- ll_density(df, fill, ...)
 
   # Personnalisation des axes
-  if (is.numeric(df$x)) {
+  if (is.numeric(x_vec)) {
 
-    if (missing(label_x)) label_x <- if (all(between(df$x, 1800, 2200))) lab_an else lab_numb
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
 
     p <- p + scale_x_continuous(
-      labels = label_x(accuracy_x), n.breaks = n_breaks_x)
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = expansion(mult = 0.03))
   }
 
   if (missing(fill)) {
@@ -846,13 +931,15 @@ lkp_density <- function(df, x, f1, f2, fill, ...,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
+  x_lab <- deparse(substitute(x))
+
   p <- p + labs(
     x = x_lab,
     y = "Densité de probabilité",
@@ -878,14 +965,15 @@ lkp_density <- function(df, x, f1, f2, fill, ...,
 #'   facets.
 #'
 #' @export
-lkp_qqplot <- function(df, x, f1, f2, group, ...,
+lkp_qqplot <- function(df, x, f1, f2, group,
                        label_text = lab_per, accuracy_text = NULL,
                        color_text = "white", fill_text = c(lkp_green, lkp_magenta),
                        label_x, label_y, n_points = 100,
                        accuracy_x = NULL, accuracy_y = NULL,
                        n_breaks_x = NULL, n_breaks_y = NULL,
                        facet_type = "wrap", scales = "free",
-                       nrow = NULL, ncol = NULL) {
+                       labeller = label_verbose,
+                       nrow = NULL, ncol = NULL, ...) {
 
   # Mise en forme des données
   quantiles <- seq(0, 1, 1 / n_points)
@@ -893,11 +981,11 @@ lkp_qqplot <- function(df, x, f1, f2, group, ...,
     select(x = {{x}}, {{f1}}, {{f2}}, group = {{group}})
   lg <- levels(df$group)
   df <- suppressWarnings(df |>
-    pivot_wider(values_from = x, names_from = group, values_fn = list) |>
-    mutate(q1 = map(.data[[lg[[1]]]], stats::quantile, quantiles),
-           q2 = map(.data[[lg[[2]]]], stats::quantile, quantiles),
-           pvalue = map2(.data[[lg[[1]]]], .data[[lg[[2]]]], stats::ks.test) |> map_dbl("p.value")) |>
-    select(- lg))
+                           pivot_wider(values_from = x, names_from = group, values_fn = list) |>
+                           mutate(q1 = map(.data[[lg[[1]]]], stats::quantile, quantiles),
+                                  q2 = map(.data[[lg[[2]]]], stats::quantile, quantiles),
+                                  pvalue = map2(.data[[lg[[1]]]], .data[[lg[[2]]]], stats::ks.test) |> map_dbl("p.value")) |>
+                           select(- lg))
 
   df_q <- df |> select(- pvalue) |> unnest(cols = c(q1, q2))
   df_boundaries <- df_q |>
@@ -931,7 +1019,8 @@ lkp_qqplot <- function(df, x, f1, f2, group, ...,
   if (missing(label_x)) label_x <- if (all(between(df_q$q1, 1800, 2200))) lab_an else lab_numb
 
   p <- p + scale_x_continuous(
-    labels = label_x(accuracy_x), n.breaks = n_breaks_x)
+    labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+    expand = expansion(mult = 0.03))
 
   if (missing(label_y)) label_y <- if (all(between(df_q$q2, 1800, 2200))) lab_an else lab_numb
 
@@ -940,13 +1029,15 @@ lkp_qqplot <- function(df, x, f1, f2, group, ...,
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
+  x_lab <- deparse(substitute(x))
+
   p <- p + labs(
     x = paste("Quantiles empiriques pour la catégorie", lg[[1]]),
     y = paste("Quantiles empiriques pour la catégorie", lg[[2]]),
@@ -968,18 +1059,22 @@ lkp_qqplot <- function(df, x, f1, f2, group, ...,
 #'   facets
 #'
 #' @export
-lkp_pyramid <- function(df, x, y, f1, f2, fill, ...,
+lkp_pyramid <- function(df, x, y, f1, f2, fill,
                         y_current, n_breaks_y = NULL,
                         facet_type = "wrap", scales = "free_x",
-                        nrow = NULL, ncol = NULL) {
+                        labeller = label_value,
+                        nrow = NULL, ncol = NULL, ...) {
+
+  fill_vec <- eval(substitute(fill), df)
+  lg <- levels(fill_vec)
 
   # Mise en forme des données
-  df <- df |> rename(x = {{x}}, fill = {{fill}})
-  lg <- levels(df$fill)
-  df <- df |> mutate(y = (-1) ^ (fill == lg[[1]]) * {{y}})
+  df <- df |> mutate(y = (-1) ^ ({{fill}} == lg[[1]]) * {{y}})
 
   # Production du graphique élémentaire
-  p <- ll_pyramid(df, ...) +
+  p <- ggplot(df, aes(x = {{x}}, weights = y, fill = {{fill}})) +
+    geom_bar(color = "black") +
+    scale_fill_manual(values = c(lkp_comp_blue, lkp_magenta)) +
     coord_flip()
 
   # Personnalisation des axes
@@ -987,26 +1082,228 @@ lkp_pyramid <- function(df, x, y, f1, f2, fill, ...,
     breaks = seq(0, 120, 10),
     sec.axis = sec_axis(trans = ~ y_current - .,
                         name = "Année de Naissance",
-                        breaks = seq(y_current - 200, y_current, 10)))
+                        breaks = seq(y_current - 200, y_current, 10)),
+    expand = expansion(mult = 0.03))
   p <- p + scale_y_continuous(
     labels = \(x) lab_numb(1)(abs(x)), n.breaks = n_breaks_y)
 
   # Ajout des facettes
   p <- add_facets(p,
-                  v_row = if (!missing(f1)) paste(ensym(f1)),
-                  v_col = if (!missing(f2)) paste(ensym(f2)),
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
                   facet_type = facet_type, scales = scales,
+                  labeller = labeller,
                   nrow = nrow, ncol = ncol)
 
   # Ajout des titres
-  x_lab <- paste(ensym(x))
-  fill_lab <- paste(ensym(fill))
+  x_lab <- deparse(substitute(x))
+  fill_lab <- deparse(substitute(fill))
+
   p <- p + labs(
     x = x_lab,
     y = "Densité de probabilité",
     fill = fill_lab,
-    title = paste("Représentation pyramidale de la variable", x_lab)
-  )
+    title = paste("Représentation pyramidale de la variable", x_lab))
+
+  return(p)
+}
+
+## 2D plots----
+
+#' 2D Heatmap
+#'
+#' Plot a heatmap of the 2 dimensional dataset by first converting the numerical
+#' variable of interest into factor using the empirical quantiles
+#'
+#' @inheritParams lkp_hist
+#' @param x First dimension
+#' @param y Second dimension
+#' @param fill Variable of interest
+#' @param breaks_fill Breaks to use for the variable of interest. Optional
+#' @param names_breaks_fill Names of breaks to use for the variable of interest. Optional
+#' @param n_breaks_fill Number of breaks to use for the variable of interest.
+#' @param label_fill Labeller to use for the variable of interest
+#' @param accuracy_fill Accuracy to use in the display of the variable of
+#'   interest
+#' @param ... Additional parameters to be passed to \code{ll_tile}
+#'
+#' @return A ggplot object representing an histogram with one or several facets.
+#'
+#' @export
+lkp_2d_tile <- function(df, x, y, fill, f1, f2,
+                        breaks_fill, names_breaks_fill, n_breaks_fill = 12,
+                        label_fill = lab_numb, accuracy_fill = NULL,
+                        show_numbers, label_text = lab_numb, accuracy_text = NULL,
+                        label_x, label_y,
+                        accuracy_x = NULL, accuracy_y = NULL,
+                        n_breaks_x = NULL, n_breaks_y = NULL,
+                        facet_type = "wrap", scales = "fixed",
+                        labeller = label_verbose,
+                        nrow = NULL, ncol = NULL, ...) {
+
+  x_vec <- eval(substitute(x), df)
+  y_vec <- eval(substitute(y), df)
+  fill_vec <- eval(substitute(fill), df)
+
+  # Mise en forme des données
+  if (missing(breaks_fill)) breaks_fill <-
+      stats::quantile(fill_vec, seq(0, 1, 1 / n_breaks_fill))
+  if (missing(names_breaks_fill)) names_breaks_fill <- paste0(
+    "[",
+    label_fill(accuracy_fill)(utils::head(breaks_fill, - 1)),
+    " ; ",
+    label_fill(accuracy_fill)(utils::tail(breaks_fill, - 1)),
+    "[")
+
+  df <- df |> mutate(
+    q_fill = cut({{fill}},
+                 breaks = breaks_fill,
+                 labels = names_breaks_fill,
+                 right = FALSE,
+                 include.lowest = TRUE) |> forcats::fct_rev())
+
+  # Production du graphique élémentaire
+  p <- ggplot(df, aes(x = {{x}}, y = {{y}}, fill = q_fill)) +
+    geom_tile(color = "black") +
+    scale_fill_viridis_d(direction = - 1)
+
+  # Texte pour indiquer les valeurs
+  if (missing(show_numbers))
+    show_numbers <- (nrow(df) <= max(20, 8 * nrow(df |> count({{f1}}, {{f2}}))))
+  if (show_numbers) {
+    p <- p + geom_text(aes(label = label_text(accuracy_text)({{fill}})),
+                       vjust = 0.5, hjust = 0.5,
+                       family = "serif")
+  }
+
+  # Personnalisation des axes
+  if (is.numeric(x_vec)) {
+
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
+
+    p <- p + scale_x_continuous(
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = c(0, 0))
+  }
+
+  if (is.numeric(y_vec)) {
+
+    if (missing(label_y)) label_y <- if (all(between(y_vec, 1800, 2200))) lab_an else lab_numb
+
+    p <- p + scale_y_continuous(
+      labels = label_y(accuracy_y), n.breaks = n_breaks_y,
+      expand = c(0, 0))
+  }
+
+  p <- p + scale_y_continuous(
+    labels = label_y(accuracy_y), n.breaks = n_breaks_y)
+
+  # Ajout des facettes
+  p <- add_facets(p,
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
+                  facet_type = facet_type, scales = scales,
+                  labeller = labeller,
+                  nrow = nrow, ncol = ncol)
+
+  # Ajout des titres
+  x_lab <- deparse(substitute(x))
+  y_lab <- deparse(substitute(y))
+  fill_lab <- deparse(substitute(fill))
+
+  p <- p + labs(
+    x = x_lab,
+    y = y_lab,
+    fill = fill_lab,
+    title = paste("Distribution bidimensionnelle de la variable", fill_lab))
+
+  return(p)
+}
+
+#' 2D Contourplot
+#'
+#' Plot a coloured contourplot of the 2 dimensional dataset using the specified
+#' breaks or number of breaks
+#'
+#' @inheritParams lkp_2d_tile
+#'
+#' @return A ggplot object representing a contourplot.
+#'
+#' @export
+lkp_2d_contour <- function(df, x, y, fill, f1, f2,
+                           breaks_fill, names_breaks_fill, n_breaks_fill = 12,
+                           label_fill = lab_numb, accuracy_fill = NULL,
+                           show_numbers,
+                           label_x, label_y,
+                           accuracy_x = NULL, accuracy_y = NULL,
+                           n_breaks_x = NULL, n_breaks_y = NULL,
+                           facet_type = "wrap", scales = "fixed",
+                           labeller = label_verbose,
+                           nrow = NULL, ncol = NULL) {
+
+  x_vec <- eval(substitute(x), df)
+  y_vec <- eval(substitute(y), df)
+  fill_vec <- eval(substitute(fill), df)
+
+  # Mise en forme des données
+  if (missing(breaks_fill)) breaks_fill <- stats::quantile(fill_vec, seq(0, 1, 1 / n_breaks_fill))
+  if (missing(names_breaks_fill)) names_breaks_fill <- paste0(
+    "[",
+    label_fill(accuracy_fill)(utils::head(breaks_fill, - 1)),
+    " ; ",
+    label_fill(accuracy_fill)(utils::tail(breaks_fill, - 1)),
+    "[")
+
+  # Production du graphique élémentaire
+  p <- ggplot(df, aes(x = {{x}}, y = {{y}}, z = {{fill}})) +
+    metR::geom_contour_fill(aes(fill = stat(level)), breaks = rev(breaks_fill)) +
+    metR::geom_contour_tanaka(breaks = rev(breaks_fill)) +
+    scale_fill_viridis_d(labels = rev(names_breaks_fill), direction = - 1)
+
+  # Texte pour indiquer les valeurs
+  if (missing(show_numbers))
+    show_numbers <- (nrow(df) <= max(20, 8 * nrow(df |> count({{f1}}, {{f2}}))))
+  if (show_numbers) {
+    p <- p + metR::geom_text_contour(stroke = 0.2)
+  }
+
+  # Personnalisation des axes
+  if (is.numeric(x_vec)) {
+
+    if (missing(label_x)) label_x <- if (all(between(x_vec, 1800, 2200))) lab_an else lab_numb
+
+    p <- p + scale_x_continuous(
+      labels = label_x(accuracy_x), n.breaks = n_breaks_x,
+      expand = c(0, 0))
+  }
+
+  if (is.numeric(y_vec)) {
+
+    if (missing(label_y)) label_y <- if (all(between(y_vec, 1800, 2200))) lab_an else lab_numb
+
+    p <- p + scale_y_continuous(
+      labels = label_y(accuracy_y), n.breaks = n_breaks_y,
+      expand = c(0, 0))
+  }
+
+  # Ajout des facettes
+  p <- add_facets(p,
+                  v_row = if (!missing(f1)) deparse(substitute(f1)),
+                  v_col = if (!missing(f2)) deparse(substitute(f2)),
+                  facet_type = facet_type, scales = scales,
+                  labeller = labeller,
+                  nrow = nrow, ncol = ncol)
+
+  # Ajout des titres
+  x_lab <- deparse(substitute(x))
+  y_lab <- deparse(substitute(y))
+  fill_lab <- deparse(substitute(fill))
+
+  p <- p + labs(
+    x = x_lab,
+    y = y_lab,
+    fill = fill_lab,
+    title = paste("Lignes de niveau de la variable", fill_lab))
 
   return(p)
 }

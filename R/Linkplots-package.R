@@ -42,6 +42,8 @@ NULL
 # use_package("purrr")
 # use_package("rlang")
 # use_package("scales")
+# use_package("forcats")
+# use_package("metR")
 
 # # Tests----
 # use_test("theme")

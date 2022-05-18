@@ -62,7 +62,7 @@ test_that("Plots work", {
     mutate(y = mu,
            ymin = mu - 2 * sigma / n,
            ymax = mu + 2 * sigma / n) |>
-    ll_errorbar()
+    ll_linerange()
 
   data |>
     filter(YrSold == 2010) |>
@@ -75,7 +75,7 @@ test_that("Plots work", {
     mutate(y = mu,
            ymin = mu - 2 * sigma / n,
            ymax = mu + 2 * sigma / n) |>
-    ll_errorbar()
+    ll_linerange()
 
   quantiles <- seq(0, 1, 1 / 100)
 
@@ -130,6 +130,15 @@ test_that("Plots work", {
   (p1 <- data |>
     mutate(g = if_else(YrSold == 2010, "new", "old") |> factor(levels = c("old", "new"))) |>
     lkp_qqplot(SalePrice, HouseStyle, group = g, nrow = 2))
+
+  # 2D plot
+  data |>
+    lkp_2d_tile(YearBuilt, YrSold, fill = SalePrice)
+
+  data |>
+    group_by(YearBuilt, YrSold, HouseStyle) |>
+    summarize(SalePrice = sum(SalePrice)) |>
+    lkp_2d_contour(YrSold - YearBuilt, YrSold, SalePrice / 1e3, HouseStyle)
 })
 
 

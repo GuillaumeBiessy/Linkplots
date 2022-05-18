@@ -25,7 +25,9 @@ Imports:
     purrr,
     rlang,
     dplyr,
-    scales
+    scales,
+    forcats,
+    metR
 URL: https://github.com/GuillaumeBiessy/Linkplots
 BugReports: https://github.com/GuillaumeBiessy/Linkplots/issues
 Depends: 

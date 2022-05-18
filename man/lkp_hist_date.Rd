@@ -10,7 +10,6 @@ lkp_hist_date(
   f1,
   f2,
   fill,
-  ...,
   wt = NULL,
   bw = "y",
   what = "number",
@@ -28,8 +27,10 @@ lkp_hist_date(
   n_breaks_y = NULL,
   facet_type = "wrap",
   scales = "fixed",
+  labeller = label_verbose,
   nrow = NULL,
-  ncol = NULL
+  ncol = NULL,
+  ...
 )
 }
 \arguments{
@@ -42,8 +43,6 @@ lkp_hist_date(
 \item{f2}{Second optional variable for facet display}
 
 \item{fill}{A variable for which to show the breakdown in each histogram bar}
-
-\item{...}{Additional parameters to be passed to \code{ll_bar}}
 
 \item{wt}{Variable to use as weight}
 
@@ -88,9 +87,22 @@ facetting ?}
 free (\code{"free"}), or free in one dimension (\code{"free_x"},
 \code{"free_y"})?}
 
+\item{labeller}{A function that takes one data frame of labels and
+returns a list or data frame of character vectors. Each input
+column corresponds to one factor. Thus there will be more than
+one with \code{vars(cyl, am)}. Each output
+column gets displayed as one separate line in the strip
+label. This function should inherit from the "labeller" S3 class
+for compatibility with \code{\link[ggplot2:labeller]{labeller()}}. You can use different labeling
+functions for different kind of labels, for example use \code{\link[ggplot2:labellers]{label_parsed()}} for
+formatting facet labels. \code{\link[ggplot2:labellers]{label_value()}} is used by default,
+check it for more details and pointers to other options.}
+
 \item{nrow}{Number of rows and columns.}
 
 \item{ncol}{Number of rows and columns.}
+
+\item{...}{Additional parameters to be passed to \code{ll_bar}}
 }
 \value{
 A ggplot object representing an histogram with one or several facets
