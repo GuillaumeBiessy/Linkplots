@@ -8,17 +8,15 @@ lkp_2d_contour(
   df,
   x,
   y,
+  fill,
   f1,
   f2,
-  fill,
   breaks_fill,
   names_breaks_fill,
   n_breaks_fill = 12,
   label_fill = lab_numb,
   accuracy_fill = NULL,
   show_numbers,
-  label_text = lab_numb,
-  accuracy_text = NULL,
   label_x,
   label_y,
   accuracy_x = NULL,
@@ -29,8 +27,7 @@ lkp_2d_contour(
   scales = "fixed",
   labeller = label_verbose,
   nrow = NULL,
-  ncol = NULL,
-  ...
+  ncol = NULL
 )
 }
 \arguments{
@@ -40,11 +37,11 @@ lkp_2d_contour(
 
 \item{y}{Second dimension}
 
+\item{fill}{Variable of interest}
+
 \item{f1}{First optional variable for facet display}
 
 \item{f2}{Second optional variable for facet display}
-
-\item{fill}{Variable of interest}
 
 \item{breaks_fill}{Breaks to use for the variable of interest. Optional}
 
@@ -58,10 +55,6 @@ lkp_2d_contour(
 interest}
 
 \item{show_numbers}{Should numbers be printed on top of the bars ? Optional}
-
-\item{label_text}{Labeller for the printed numbers. Optional}
-
-\item{accuracy_text}{Accuracy for the printed numbers. Optional}
 
 \item{label_x}{Labeller for the x axis. Optional}
 
@@ -96,8 +89,6 @@ check it for more details and pointers to other options.}
 \item{nrow}{Number of rows and columns.}
 
 \item{ncol}{Number of rows and columns.}
-
-\item{...}{Additional parameters to be passed to \code{ll_tile}}
 }
 \value{
 A ggplot object representing a contourplot.
